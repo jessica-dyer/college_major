@@ -1,0 +1,110 @@
+---
+title: "Data Analysis Practice"
+author: "Jessica Dyer"
+date: "1/17/2021"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+install.packages("devtools")
+devtools::install_github("jhudsl/collegeIncome")
+library(collegeIncome)
+data(college)
+library(ggplot2)
+library(dplyr)
+library(patchwork)
+library(flextable)
+
+devtools::install_github("jhudsl/matahari")
+library(matahari)
+
+dance_start(value = FALSE, contents = FALSE)
+```
+
+## Assignment 
+
+Your assignment is to study how income varies across different categories of college majors. You will be using data from a study of recent college graduates. Make sure to use good practices that you have learned so far in this course and previous courses in the specialization. In particular, it is good practice to specify an analysis plan early in the process to avoid the “p-hacking” behavior of trying many analyses to find one that has desired results.
+
+## Analysis plan
+We will conduct multi-variate linear regression with median earnings of full-time, year-round workers as the outcome variable and category of major as the predictor variable. Because research shows that education and gender are known to effect income, we will also explore the role that gender and education have on median earnings. 
+
+### Assumptions
+
+  - Data are IID gaussian distributed
+  - Variances are equal across major categories
+
+## Exploratory analysis 
+```{r, echo = TRUE}
+college$major_category <- as.factor(college$major_category)
+g <- ggplot(college, aes(y = median, x = major_category, fill = major_category)) + 
+  geom_violin() + 
+  theme_bw() + 
+  xlab("Type of college major") + 
+  ylab("Distribution of median income")
+
+g <- g + theme(axis.title.x=element_blank(),
+        axis.text.x=element_blank(),
+        axis.ticks.x=element_blank())
+require(scales)
+g <- g + scale_y_continuous(labels = comma)
+```
+
+
+```{r}
+w <- ggplot(college, aes(y = perc_women, x = major_category, fill = major_category)) + 
+  geom_violin() + 
+  theme_bw() + 
+  xlab("Type of college major") + 
+  ylab("Distribution of the percentage of women")
+
+w <- w + theme(axis.title.x=element_blank(),
+        axis.text.x=element_blank(),
+        axis.ticks.x=element_blank())
+
+e <- ggplot(college, aes(y = perc_college_jobs, x = major_category, fill = major_category)) + 
+  geom_violin() + 
+  theme_bw() + 
+  xlab("Type of college major") + 
+  ylab("Distribution of the percentage of college jobs")
+
+e <- e + theme(axis.title.x=element_blank(),
+        axis.text.x=element_blank(),
+        axis.ticks.x=element_blank())
+
+g / w / e
+
+```
+
+## Generate variables 
+
+Generate binary variables for both 'perc_women' and 'perc_college_jobs'. 
+
+ - Female dominated job: The percentage of women is >50%
+ - College educated dominated: The percentage of college educated jobs is >50%
+ 
+```{r}
+
+college = mutate(college, female_dom = 1 * (perc_women > .50))
+college = mutate(college, col_dom = 1 * (perc_college_jobs > .50))
+ 
+```
+ 
+
+## Regress with only major category in the model
+```{r}
+major2 <- relevel(college$major_category, "Business")
+fit <- lm(median ~ major2, college)
+summary(fit)
+```
+
+With only 'major category' in the model, being in the arts,
+
+## Regress with education and gender
+```{r}
+fit2 <- lm(median ~ major2 + female_dom + col_dom, data = college)
+summary(fit2)
+```
+```{r}
+dance_save("~/Desktop/college_major_analysis.rds")
+```

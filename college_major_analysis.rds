@@ -1,0 +1,74 @@
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+install.packages("devtools")
+devtools::install_github("jhudsl/collegeIncome")
+library(collegeIncome)
+data(college)
+library(ggplot2)
+library(dplyr)
+library(patchwork)
+library(flextable)
+
+devtools::install_github("jhudsl/matahari")
+library(matahari)
+
+dance_start(value = FALSE, contents = FALSE)
+
+
+college$major_category <- as.factor(college$major_category)
+g <- ggplot(college, aes(y = median, x = major_category, fill = major_category)) + 
+        geom_violin() + 
+        theme_bw() + 
+        xlab("Type of college major") + 
+        ylab("Distribution of median income")
+
+g <- g + theme(axis.title.x=element_blank(),
+               axis.text.x=element_blank(),
+               axis.ticks.x=element_blank())
+require(scales)
+g <- g + scale_y_continuous(labels = comma)
+
+w <- ggplot(college, aes(y = perc_women, x = major_category, fill = major_category)) + 
+        geom_violin() + 
+        theme_bw() + 
+        xlab("Type of college major") + 
+        ylab("Distribution of the percentage of women")
+
+w <- w + theme(axis.title.x=element_blank(),
+               axis.text.x=element_blank(),
+               axis.ticks.x=element_blank())
+
+e <- ggplot(college, aes(y = perc_college_jobs, x = major_category, fill = major_category)) + 
+        geom_violin() + 
+        theme_bw() + 
+        xlab("Type of college major") + 
+        ylab("Distribution of the percentage of college jobs")
+
+e <- e + theme(axis.title.x=element_blank(),
+               axis.text.x=element_blank(),
+               axis.ticks.x=element_blank())
+
+g / w / e
+
+
+
+## Generate variables 
+
+college = mutate(college, female_dom = 1 * (perc_women > .50))
+college = mutate(college, col_dom = 1 * (perc_college_jobs > .50))
+
+
+## Regress with only major category in the model
+
+major2 <- relevel(college$major_category, "Business")
+fit <- lm(median ~ major2, college)
+summary(fit)
+
+
+
+## Regress with education and gender
+
+fit2 <- lm(median ~ major2 + female_dom + col_dom, data = college)
+summary(fit2)
+
+dance_save("~/Desktop/college_major_analysis.rds")
